@@ -21,7 +21,7 @@ def mock_import_deps():
         # Defaults for Success
         stager.return_value.resolve_template_path.side_effect = lambda x: Path(x).absolute()
         stager.return_value.stage_phase.return_value = Path("staged/1-main")
-        boot.return_value = "sa@example.com"
+        boot.return_value = ("sa@example.com", False)
         sub.return_value.returncode = 0
         # Mock stdout for state list checks
         sub.return_value.stdout = ""
@@ -76,7 +76,7 @@ def test_import_no_state_existing_local_config_fails(mock_import_deps, tmp_path)
 def test_import_fails_bootstrap(mock_import_deps, tmp_path):
     """Negative: Fails if bootstrap identity returns None/False."""
     stager, boot, sub = mock_import_deps
-    boot.return_value = None # Bootstrap failed/cancelled
+    boot.return_value = (None, False) # Bootstrap failed/cancelled
     
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
@@ -95,3 +95,17 @@ def test_import_no_state_partial_cloud_resilient(mock_import_deps, tmp_path):
         # Should now succeed with warnings instead of failing
         assert result.exit_code == 0
         assert "State Hydrated Successful" in result.output
+
+
+def test_discover_context_passes_quiet_flag():
+    """Ensure gcloud discovery commands include --quiet to prevent interactive prompts."""
+    import importlib
+    import_mod = importlib.import_module("scripts.cli.commands.import")
+    with patch("subprocess.run") as sub:
+        sub.return_value.stdout = "123456"
+        sub.return_value.returncode = 0
+        import_mod.discover_context("example-project", "us-central1")
+        ai_calls = [c.args[0] for c in sub.call_args_list if "ai" in c.args[0]]
+        assert len(ai_calls) == 2
+        for cmd in ai_calls:
+            assert "--quiet" in cmd

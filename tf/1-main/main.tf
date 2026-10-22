@@ -253,9 +253,9 @@ module "ingress_lb" {
   ]
 }
 
-# DNS module - only created if hostname is configured AND Apigee is enabled
+# DNS module - only created if hostname is configured AND Apigee is enabled (and not a wildcard IP service like nip.io / sslip.io)
 module "dns" {
-  count         = (local.hostname != null && var.apigee_enabled) ? 1 : 0
+  count         = (local.hostname != null && var.apigee_enabled && !endswith(local.hostname, ".nip.io") && !endswith(local.hostname, ".sslip.io")) ? 1 : 0
   source        = "./modules/dns"
   dns_zone_name = "apigee-dns"
   hostname      = local.hostname

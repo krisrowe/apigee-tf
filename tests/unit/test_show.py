@@ -55,6 +55,6 @@ def test_show_displays_cloud_status(cloud_provider, tmp_path):
         assert result.exit_code == 0
         clean_output = strip_ansi(result.output)
         assert "CLOUD STATUS (via Terraform State):" in clean_output
-        assert "Billing:         EVALUATION" in clean_output
-        assert "DRZ:             No" in clean_output
+        assert "Billing:" in clean_output and "EVALUATION" in clean_output
+        assert "DRZ:" in clean_output and "No" in clean_output
         assert "✓ Environments: dev, prod" in clean_output

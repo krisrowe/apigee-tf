@@ -83,25 +83,30 @@ class ConfigLoader:
                 return section[0]
             return section
 
-        # Helper to get value from either        # Helper to get value
+        def _clean(v):
+            if isinstance(v, str) and len(v) >= 2 and v.startswith('"') and v.endswith('"'):
+                return v[1:-1]
+            return v
+
+        # Helper to get value
         def get_val(section, key, flat_key=None, default=None):
             # 1. Try nested block (TOML style): section { key = val }
             if section in data:
                 sec_data = data[section]
                 if isinstance(sec_data, list) and len(sec_data) > 0:
                     val = sec_data[0].get(key)
-                    if val is not None: return val
+                    if val is not None: return _clean(val)
                 elif isinstance(sec_data, dict):
                     val = sec_data.get(key)
-                    if val is not None: return val
+                    if val is not None: return _clean(val)
             
             # 2. Try flat key (TFVARS style): flat_key = val
             if flat_key and flat_key in data:
-                return data[flat_key]
+                return _clean(data[flat_key])
             
             # 3. Fallback to just key (if flat_key not provided or match)
             if key in data:
-                return data[key]
+                return _clean(data[key])
                 
             return default
 

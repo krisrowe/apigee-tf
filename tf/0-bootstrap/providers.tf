@@ -13,11 +13,13 @@ terraform {
 }
 
 provider "google" {
-  project = var.gcp_project_id
+  project               = var.gcp_project_id
+  user_project_override = true
   # Uses ADC by default (User Identity)
 }
 
 provider "google-beta" {
-  project = var.gcp_project_id
+  project               = var.gcp_project_id
+  user_project_override = true
   # Uses ADC by default
 }

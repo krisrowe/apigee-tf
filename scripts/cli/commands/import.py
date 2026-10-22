@@ -57,7 +57,7 @@ def discover_context(project_id: str, instance_loc: str) -> Dict[str, str]:
     try:
         # Index
         res = subprocess.run(
-            ["gcloud", "ai", "indexes", "list", 
+            ["gcloud", "ai", "indexes", "list", "--quiet",
              f"--project={project_id}", f"--region={instance_loc}", 
              "--filter=displayName:semantic-cache-index", "--format=value(name)"],
             capture_output=True, text=True
@@ -69,7 +69,7 @@ def discover_context(project_id: str, instance_loc: str) -> Dict[str, str]:
 
         # Endpoint
         res = subprocess.run(
-            ["gcloud", "ai", "index-endpoints", "list", 
+            ["gcloud", "ai", "index-endpoints", "list", "--quiet",
              f"--project={project_id}", f"--region={instance_loc}", 
              "--filter=displayName:semantic-cache-endpoint", "--format=value(name)"],
             capture_output=True, text=True

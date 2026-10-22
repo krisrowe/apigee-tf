@@ -34,7 +34,7 @@ def test_apply_with_template_no_state_empty_cloud_success(mock_stager, mock_conf
     """
     with patch("scripts.cli.commands.core.subprocess.run") as mock_sub, \
          patch("scripts.cli.commands.core.shutil.which") as mock_which, \
-         patch("scripts.cli.commands.core._run_bootstrap_folder", return_value="sa@test.com"):
+         patch("scripts.cli.commands.core._run_bootstrap_folder", return_value=("sa@test.com", False)):
         
         mock_which.return_value = "terraform"
         mock_sub.return_value.returncode = 0
@@ -47,7 +47,7 @@ def test_apply_with_template_no_state_empty_cloud_success(mock_stager, mock_conf
             result = runner.invoke(cli, ["apply", "t.json"])
             
             assert result.exit_code == 0
-            assert "Convergence Complete" in result.output
+            assert "System Converged" in result.output
             # Verify Phase 1 was attempted (apply)
             assert any("apply" in call[0][0] for call in mock_sub.call_args_list)
 
@@ -76,7 +76,7 @@ def test_apply_with_template_no_state_partial_cloud_direct_apply(mock_stager, mo
     """
     with patch("scripts.cli.commands.core.subprocess.run") as mock_sub, \
          patch("scripts.cli.commands.core.shutil.which") as mock_which, \
-         patch("scripts.cli.commands.core._run_bootstrap_folder", return_value="sa@test.com"):
+         patch("scripts.cli.commands.core._run_bootstrap_folder", return_value=("sa@test.com", False)):
         
         mock_which.return_value = "terraform"
         
@@ -113,7 +113,7 @@ def test_apply_template_mismatch_existing_state_full_cloud(mock_stager, mock_con
     # CLI extract vars from state doesn't happen when TPL is provided
     with patch("scripts.cli.commands.core.subprocess.run") as mock_sub, \
          patch("scripts.cli.commands.core.shutil.which") as mock_which, \
-         patch("scripts.cli.commands.core._run_bootstrap_folder", return_value="sa@test.com"):
+         patch("scripts.cli.commands.core._run_bootstrap_folder", return_value=("sa@test.com", False)):
         
         mock_which.return_value = "terraform"
         mock_sub.return_value.returncode = 0

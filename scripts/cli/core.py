@@ -2,12 +2,15 @@ import urllib.request
 import urllib.error
 import urllib.parse
 import json
+import logging
 import subprocess
 import os
 import socket
 from pathlib import Path
 import hcl2
 from scripts.cli.paths import get_state_path, get_data_dir
+
+logger = logging.getLogger(__name__)
 
 # XDG Paths
 XDG_CONFIG_HOME = Path.home() / ".config" / "apigee-tf"
@@ -19,13 +22,20 @@ def api_request(method, path, body=None, headers=None):
     Real implementation for ApigeeAPIProvider.
     """
     try:
+        logger.debug("Retrieving gcloud access token...")
         # Get token from gcloud
-        token = subprocess.check_output(["gcloud", "auth", "print-access-token"], text=True).strip()
-    except Exception:
+        token = subprocess.check_output(["gcloud", "auth", "print-access-token"], text=True, timeout=10).strip()
+        logger.debug("Token retrieved successfully.")
+    except subprocess.TimeoutExpired:
+        logger.error("GCloud auth timed out after 10s")
+        return 0, {"error": "GCloud auth timed out"}
+    except Exception as e:
+        logger.error(f"GCloud auth failed: {e}")
         return 0, {"error": "GCloud auth failed"}
 
     # Determine Base URL
     base_url = "https://apigee.googleapis.com/v1"
+    logger.debug("Loading local variables for configuration...")
     vars_dict = load_vars()
     
     # Handle nested 'apigee' block from HCL parsing
@@ -43,6 +53,7 @@ def api_request(method, path, body=None, headers=None):
         base_url = f"https://{cp_loc}-apigee.googleapis.com/v1"
 
     url = f"{base_url}/{path}" if not path.startswith("http") else path
+    logger.debug(f"Targeting API: {method} {url}")
     
     req_headers = {
         "Authorization": f"Bearer {token}",
@@ -55,7 +66,9 @@ def api_request(method, path, body=None, headers=None):
     req = urllib.request.Request(url, data=data, headers=req_headers, method=method)
 
     try:
-        with urllib.request.urlopen(req) as response:
+        logger.debug(f"Executing request (timeout=15s)...")
+        with urllib.request.urlopen(req, timeout=15) as response:
+            logger.debug(f"Response received: {response.status}")
             res_body = response.read().decode("utf-8")
             return response.status, json.loads(res_body)
     except urllib.error.HTTPError as e:
@@ -123,6 +136,15 @@ def get_project_paths():
         
     return var_file, state_file
 
+def _clean_hcl_val(v):
+    if isinstance(v, str) and len(v) >= 2 and v.startswith('"') and v.endswith('"'):
+        return v[1:-1]
+    if isinstance(v, dict):
+        return {k: _clean_hcl_val(val) for k, val in v.items()}
+    if isinstance(v, list):
+        return [_clean_hcl_val(item) for item in v]
+    return v
+
 def load_vars():
     """Load variables from the local terraform.tfvars file."""
     var_file, _ = get_project_paths()
@@ -132,7 +154,10 @@ def load_vars():
     try:
         with open(var_file, 'r') as f:
             data = hcl2.load(f)
-            return {k: v[0] if isinstance(v, list) and len(v) == 1 else v for k, v in data.items()}
+            return {
+                k: _clean_hcl_val(v[0] if isinstance(v, list) and len(v) == 1 else v)
+                for k, v in data.items()
+            }
     except Exception:
         return {}
 
